@@ -1,0 +1,103 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>PokeManz</title>
+    <base href="/" />
+    <link href="css/bootstrap/bootstrap.min.css" rel="stylesheet" />
+    <link href="css/app.css" rel="stylesheet" />
+    <link href="css/scoreTable.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <script src="https://www.w3schools.com/lib/w3.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+
+<body>
+    <app>Your Pokemanz adventure awaits...</app>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script src="/js/Music.js"></script>
+
+    <audio id="championMusic" src="/media/PokemonRedChampionMusic.mp3" />
+    <audio id="battleMusic" src="/media/PokemonRedBattle.mp3" />
+    <audio id="endingMusic" src="/media/PokemonRedEnding.mp3" />
+    <audio id="openingMusic" src="/media/PokemonRedOpening.mp3" />
+    <audio id="routeMusic" src="/media/PokemonRedRoute1.mp3" />
+    <audio id="trainerMusic" src="/media/PokemonRedPokemonCenter.mp3" />
+    <audio id="rivalMusic" src="/media/PokemonRedRival.mp3" />
+    <audio id="pikachu" src="/media/Pikachu.mp3" />
+    <audio id="route2Music" src="/media/PokemonRedRoute2.mp3" />
+    <audio id="victoryMusic" src="/media/PokemonRedVictory.mp3" />
+    <audio id="elite4Music" src="/media/PokemonRedElite4.mp3" />
+    <script>
+        function PlayMusic(id) {
+            PauseMusic();
+            document.getElementById(id).loop = true;
+            document.getElementById(id).currentTime = 0;
+            document.getElementById(id).play();
+        }
+
+        function PauseMusic() {
+            document.getElementById('championMusic').pause();
+            document.getElementById('battleMusic').pause();
+            document.getElementById('endingMusic').pause();
+            document.getElementById('openingMusic').pause();
+            document.getElementById('routeMusic').pause();
+            document.getElementById('trainerMusic').pause();
+            document.getElementById('rivalMusic').pause();
+            document.getElementById('route2Music').pause();
+            document.getElementById('victoryMusic').pause();
+            document.getElementById('elite4Music').pause();
+        }
+
+        function PlayPikachuSound() {
+            document.getElementById('pikachu').play();
+        }
+    </script>
+
+    <script>
+        function WriteCookie(name, value, days) {
+            var expires;
+            if (days) {
+                var date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toGMTString();
+            }
+            else {
+                expires = "";
+            }
+            document.cookie = name + "=" + value + expires + "; path=/";
+        }
+
+        function GetCookie(name) {
+            try {
+                var nameEQ = name + "=";
+                var ca = document.cookie.split(';');
+                for (var i = 0; i < ca.length; i++) {
+                    var c = ca[i];
+                    while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+                    if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+                }
+                return '';
+            } catch {
+                console.log('Failed to retrive cookie.');
+                return '';
+            }
+        }
+
+        function EraseCookie(name) {
+            document.cookie = name + '=; Max-Age=-99999999;';
+        }
+    </script>
+    <script src="js/scoreTable.js">
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,51 @@
+﻿@page "/trainer"
+
+@inject NavigationManager navMan;
+@inject HttpClient client;
+@inject IJSRuntime JSRuntime;
+@using Web.Shared.Models
+@using Web.Client.Components
+
+@if (Loading)
+{
+    <LoadingComponent />
+}
+else
+{
+    <h1>My Trainer</h1>
+    <p>Basic trainer info for @MyTrainer.Handle</p>
+    <TrainerInfoComponent Trainer="@MyTrainer" ShowLineups="false"></TrainerInfoComponent>
+}
+
+@code {
+
+    private TrainerModel MyTrainer = new TrainerModel();
+    public PokemonService Poke { get; set; }
+    public AuthService Auth { get; set; }
+    private bool Loading { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Loading = true;
+        Shared.NavMenu.IsLoggedIn = true;
+        Poke = new PokemonService();
+        Auth = new AuthService();
+        JSRuntime.InvokeAsync<string>("PlayMusic", "trainerMusic");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var trainerHandle = await Task.Run(async () => await Auth.GetCookieAsync(JSRuntime, "Username"));
+
+        if (string.IsNullOrEmpty(trainerHandle))
+        {
+            navMan.NavigateTo("login");
+        }
+        else
+        {
+            MyTrainer = await Poke.GetTrainer(client, trainerHandle);
+            MyTrainer.Handle = char.ToUpper(MyTrainer.Handle[0]) + MyTrainer.Handle.Substring(1); // uppercase first letter
+        }
+        Loading = false;
+    }
+}

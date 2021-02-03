@@ -1,0 +1,44 @@
+﻿@page "/scoreboard";
+@inject NavigationManager navMan;
+@inject HttpClient client;
+@inject IJSRuntime JSRuntime;
+@using Web.Shared.Models
+@using Web.Client.Components
+
+<ScoreboardComponent></ScoreboardComponent>
+
+<button class="btn btn-primary" @onclick="PlayAgain">Play Again?</button>
+<button class="btn btn-primary" @onclick="Exit">Exit</button>
+
+@code {
+    public AuthService Auth { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var trainerHandle = await Task.Run(async () => await Auth.GetCookieAsync(JSRuntime, "Username"));
+
+        if (string.IsNullOrEmpty(trainerHandle))
+        {
+            navMan.NavigateTo("login");
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        Auth = new AuthService();
+        JSRuntime.InvokeAsync<string>("PlayMusic", "endingMusic");
+    }
+
+
+    private void PlayAgain()
+    {
+        navMan.NavigateTo("team");
+    }
+
+    private async Task Exit()
+    {
+        await AuthService.EraseCookieAsync(JSRuntime, "Username");
+        Shared.NavMenu.IsLoggedIn = false;
+        navMan.NavigateTo("home");
+    }
+}

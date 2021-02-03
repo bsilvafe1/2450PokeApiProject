@@ -1,0 +1,82 @@
+﻿@inject NavigationManager navMan
+@inject HttpClient client
+@using Web.Shared.Models
+
+@if (Loading)
+{
+    <LoadingComponent />
+}
+else
+{
+    <h1>Pokemanz TOP 10</h1>
+
+    <input type="text" id="myInput" onkeyup="myFunction()" placeholder="Search for names.." title="Type in a name">
+
+    <table id="myTable" class="table sortable">
+        <thead>
+            <tr class="header">
+                <th onclick="w3.sortHTML('#myTable', '.item', 'td:nth-child(1)')" style="cursor:pointer">
+                    Trainer
+                    <i class="fa fa-arrow-circle-down" aria-hidden="true"></i>
+                </th>
+                <th onclick="w3.sortHTML('#myTable', '.item', 'td:nth-child(2)')" style="cursor:pointer">
+                    Score
+                    <i class="fa fa-arrow-circle-down" aria-hidden="true"></i>
+                </th>
+                <th onclick="w3.sortHTML('#myTable', '.item', 'td:nth-child(3)')" style="cursor:pointer">
+                    Pokemon
+                    <i class="fa fa-arrow-circle-down" aria-hidden="true"></i>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var trainer in topTenTrainers)
+            {
+                string team = string.Empty;
+                @foreach (PokemonModel p in trainer.Team.Lineup)
+                {
+                    if (string.IsNullOrEmpty(team))
+                        team += p.Name;
+                    else
+                    {
+                        team += ", ";
+                        team += p.Name;
+                    }
+                }
+
+                <tr class="item">
+                    <td>@trainer.Handle</td>
+                    <td>@trainer.HighScore</td>
+                    <td>
+                        @team
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<TrainerModel> topTenTrainers { get; set; }
+    private bool Loading { get; set; }
+    private PokemonService Poke { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Poke = new PokemonService();
+        Loading = true;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        topTenTrainers = await Poke.GetTopTenTrainers(client);
+
+        // filter out peeps that don't have teams/highscores
+        if (topTenTrainers.Any(t => t.Team == null))
+        {
+            topTenTrainers = topTenTrainers.Where(t => t.Team != null).ToList();
+        }
+
+        Loading = false;
+    }
+}

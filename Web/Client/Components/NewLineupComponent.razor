@@ -1,0 +1,281 @@
+﻿@inject NavigationManager navMan;
+@inject HttpClient client;
+
+@using Web.Shared.Models
+@using Web.Client.Components
+@if (Loading)
+{
+    @foreach (var m in LoadingMessage)
+    {
+        <h5 class="text-center">@m</h5>
+    }
+    <br />
+    <LoadingComponent />
+}
+else
+{
+    <br />
+    <h3 class="text-center">Create a New Lineup</h3>
+    <br />
+
+    @if (ShowMessage)
+    {
+        <h4 style="color: red;">You must select 6 pokemon</h4>
+    }
+
+    @if (PokemonNames?.Count > 0 && !PokemonGenDone)
+    {
+        <h5 class="text-center">Select up to 6 Pokemon and then click Continue to Moves</h5>
+        <div class="text-center">
+            <button class="btn btn-primary" @onclick=@GenPokemon>Continue to Moves</button> <span><b style="color: @CheckedCountColor()">Selected: @PokemonNameCheckedCount / 6</b></span>
+        </div>
+        <br />
+        <br />
+
+        <div class="row">
+            @{var index = 0;}
+            @foreach (var name in @PokemonNames)
+            {
+                index++;
+                <div class="col-lg-3 col-med-5 col-sm-7">
+                    <label for="@name.Text" style="padding: 5px; background-color: @CheckedColor(name.Checked)">
+                        @if (name.Checked)
+                        {
+                            <input type="checkbox" id="@name.Text" checked="checked"
+                                   @onchange="@(() => { name.Checked = !name.Checked; PokemonNameCheckedCount--; })" />
+                        }
+                        else
+                        {
+                            <input type="checkbox" id="@name.Text" @onchange="@(() => { name.Checked = !name.Checked; PokemonNameCheckedCount++; })" />
+                        }
+                        @name.Text
+                        @{
+                            var imgSrc = $"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{index}.png";
+                        }
+                        <img src=@imgSrc style="height: 50px; width: 50px;" />
+                    </label>
+                </div>
+            }
+        </div>
+    }
+    @if (MayContinue)
+    {
+        <p>Select Moves for each pokemon</p>
+        if (PokemonGenDone)
+        {
+            <div class="container-fluid">
+                <div class="row text-center">
+
+                    @for (int i = 0; i < PokemonSelections.Count; i++)
+                    {
+                        var pokeIndex = i; // I would just reference i and j, but it breaks for whatever reason unless I make a local reference. Took hours to figure this out.
+                        var p = PokemonSelections[pokeIndex];
+                        <div class="col">
+                            <div class="row-fluid">
+                                <img src=@p.FrontImageUri style="height: 50px; width: 50px;" />
+                            </div>
+                            <div class="row-fluid">
+                                @{
+                                    var capatalizedName = char.ToUpper(p.Name[0]) + p.Name.Substring(1);
+                                }
+                                <strong>@(capatalizedName)</strong>
+                            </div>
+
+                            <EditForm Model=@p.Moves>
+                                <DataAnnotationsValidator />
+                                <ValidationSummary />
+                                @for (int j = 0; j < 4; j++)
+                                {
+                                    var moveIndex = j;
+                                    <div class="col">
+                                        <InputSelect class="form-group form-control" style="width: inherit;" @bind-Value="@PokemonSelections[pokeIndex].MoveSelections[moveIndex].Name">
+                                            <option selected>select a move</option>
+                                            @foreach (var m in p.Moves)
+                                                                {
+                                                <option value="@m.Name">
+                                                    @PascalCaseName(@m.Name) (Type: @PascalCaseName(@m.Type) - Damage: @m.Damage - @m.Category)
+                                                </option>
+                                                                }
+                                        </InputSelect>
+                                    </div>
+                                }
+                            </EditForm>
+                        </div>
+                    }
+
+                </div>
+                @if (ErrorSavingMoves)
+                {
+                    <h4 style="color: red;">You must select 4 distinct moves per pokemon</h4>
+                }
+                <br />
+                <button class="btn btn-primary" @onclick="SaveTeam">Save Team</button>
+            </div>
+        }
+        else
+        {
+            <h4 style="color: red;">You must select 6 pokemon</h4>
+        }
+    }
+}
+
+@code {
+
+    [Parameter]
+    public List<NewTeam.CheckBox> PokemonNames { get; set; }
+
+    [Parameter]
+    public TrainerModel Trainer { get; set; }
+
+    public List<PokemonModel> PokemonSelections { get; set; }
+    public PokemonService Poke { get; set; }
+    public bool PokemonGenDone { get; set; }
+    public int PokemonNameCheckedCount { get; set; }
+    public int MoveCheckedCount { get; set; } // maybe obsolete
+    private bool ShowMessage { get; set; }
+    private bool MayContinue { get; set; }
+    private bool Loading { get; set; }
+    private bool ErrorSavingMoves { get; set; }
+    private List<string> LoadingMessage { get; set; } = new List<string>();
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await Task.Run(() => PokemonSelections = new List<PokemonModel>());
+        PokemonNameCheckedCount = PokemonSelections.Count; // set max count of pokemon
+        MoveCheckedCount = 4;
+    }
+
+    protected override void OnInitialized()
+    {
+        Poke = new PokemonService();
+    }
+
+    private string CheckedColor(bool isChecked)
+    {
+        return isChecked ? "lightgreen" : "none";
+    }
+
+    private string CheckedCountColor()
+    {
+        return PokemonNameCheckedCount > 0 && PokemonNameCheckedCount <= 6 ? "green" : "red";
+    }
+
+    private async Task GenPokemon()
+    {
+        System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+        System.Diagnostics.Stopwatch sw2 = new System.Diagnostics.Stopwatch();
+        sw.Start();
+        sw2.Start();
+
+        Loading = true;
+        if (PokemonNames.Count(n => n.Checked == true) >= 1) // == 6) // six is optional
+        {
+            MayContinue = true;
+
+            var names = PokemonNames.Where(n => n.Checked == true)
+            .Select(n => n.Text)
+            .ToArray();
+
+            for (int i = 0; i < names.Length; i++)
+            {
+                var pokemon = await Poke.GetPokemonByName(client, names[i]);
+
+                var message = $"Loaded {pokemon.Name} at {sw.Elapsed}";
+                Console.WriteLine(message);
+                LoadingMessage.Add($"{message}");
+                StateHasChanged();
+
+                pokemon.MoveSelections = new List<MoveModel>() { new MoveModel(), new MoveModel(), new MoveModel(), new MoveModel() };
+                PokemonSelections.Add(pokemon);
+                sw.Reset();
+                sw.Start();
+            }
+
+            sw2.Stop();
+            sw.Stop();
+            Console.WriteLine("Total load time elapsed={0}", sw2.Elapsed);
+            LoadingMessage.Add($"Total load time elapsed={sw2.Elapsed}");
+
+            PokemonGenDone = true;
+            Loading = false;
+            ShowMessage = false;
+        }
+        else
+        {
+            ShowMessage = true;
+        }
+        Loading = false;
+    }
+
+    private void SaveMoveSelections()
+    {
+        ErrorSavingMoves = false;
+        PokemonSelections.ForEach(p =>
+        {
+            for (int i = 0; i < p.MoveSelections.Count; i++)
+            {
+                var index = i;
+                var move = p.Moves.Where(s => s.Name == p.MoveSelections[i].Name).Select(s => s).FirstOrDefault();
+
+                if (p.MoveSelections.Contains(move) && p.MoveSelections[i].Id <= 0 && p.Moves.Count > 3) // 3 means at least one move must be a duplicate
+            {
+                    ErrorSavingMoves = true;
+                }
+                else
+                {
+                    p.MoveSelections[i] = move;
+                    p.MoveSelections[i].ResourceUri = string.Empty; //clear this out to save space in db, don't need it anymore
+            }
+            }
+        });
+
+        if (!ErrorSavingMoves)
+        {
+            PokemonSelections.ForEach(p =>
+            {
+                p.Moves.Clear(); // garbage clean up
+        });
+        }
+    }
+
+    private async Task SaveTeam()
+    {
+        SaveMoveSelections();
+
+        if (!ErrorSavingMoves)
+        {
+            var lineup = new LineupModel() { Lineup = PokemonSelections.ToList() };
+
+            if (!Trainer.Lineups.Contains(lineup))
+            {
+                Trainer.Lineups.Add(lineup);
+                Trainer.Team = lineup;
+
+                var success = await Poke.UpdateLineup(client, Trainer); //add lineup
+                navMan.NavigateTo("team");
+            }
+        }
+    }
+
+    private static System.Text.RegularExpressions.Regex pascalReg = new System.Text.RegularExpressions.Regex("\\W\\w");
+
+    public static string PascalCaseName(string toPascal)
+    {
+        var ms = pascalReg.Matches(toPascal);
+        char[] ns = toPascal.ToCharArray();
+        if (ns.Length > 0)
+        {
+            ns[0] = char.ToUpper(ns[0]);
+        }
+        for (int i = 0; i < ms.Count; i++)
+        {
+            if (ms[i].Success && ms[i].Index != toPascal.Length - 1)
+            {
+                ns[i] = char.ToUpper(ns[i]);
+            }
+        }
+        return string.Join("", ns);
+    }
+}
+
